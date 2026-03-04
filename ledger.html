@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<body style="background:#000;color:#0f0;font-family:monospace;padding:20px;line-height:1.5;">
+ <div style="border-bottom:2px solid #0f0;padding-bottom:10px;margin-bottom:20px;display:flex;justify-content:space-between;">
+  <span>[ GLOBAL_LEDGER_OBSERVATORY ]</span>
+  <span id="counter">0 ENTRIES</span>
+ </div>
+ 
+ <div id="stream" style="display:flex;flex-direction:column-reverse;gap:10px;">
+  <div>> INITIALIZING STREAM...</div>
+ </div>
+
+ <script>
+  const stream = document.getElementById('stream');
+  const counter = document.getElementById('counter');
+  const DATA_URL = "https://raw.githubusercontent.com/[YOUR-USERNAME]/good-reflections/main/ledger.json";
+
+  async function refreshLedger() {
+   try {
+    const r = await fetch(DATA_URL + '?t=' + Date.now()); // Prevent caching
+    const data = await r.json();
+    counter.innerText = `${data.length} ENTRIES`;
+    stream.innerHTML = data.map(entry => `
+     <div style="border-left:3px solid #333;padding-left:10px;margin-bottom:5px;">
+      <span style="color:#555;">[${new Date(entry.ts).toISOString()}]</span> 
+      <span style="color:#fff;">${entry.text.toUpperCase()}</span>
+     </div>
+    `).join('');
+   } catch(e) { console.error("Sync Error"); }
+  }
+
+  setInterval(refreshLedger, 5000); // Pulse every 5 seconds
+  refreshLedger();
+ </script>
+</body>
+</html>
