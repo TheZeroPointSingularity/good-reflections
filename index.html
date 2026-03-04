@@ -3,80 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>MUPPET_OS_v1.0</title>
+<title>MUPPET_OS_v1.1_MODULAR</title>
 <style>
 body { background: #000; color: #ff0; font-family: monospace; overflow: hidden; margin: 0; padding: 20px; border: 5px solid #d4af37; height: 100vh; box-sizing: border-box; }
-#vision-feed { position: absolute; top: 10px; right: 10px; width: 120px; border: 1px solid #ff0; filter: grayscale(1) contrast(2); }
-#ledger-box { height: 70%; overflow-y: auto; border-bottom: 1px solid #333; margin-bottom: 10px; padding-top: 150px; }
-#intent-input { width: 100%; background: #000; border: 1px solid #ff0; color: #ff0; padding: 10px; font-size: 1.2rem; outline: none; }
-.entry { margin-bottom: 5px; color: #0f0; }
+#vision-feed { position: absolute; top: 10px; right: 10px; width: 120px; border: 1px solid #ff0; filter: grayscale(1) contrast(2); z-index: 10; }
+#ledger-box { height: 75%; overflow-y: auto; border-bottom: 1px solid #333; margin-bottom: 10px; padding-top: 140px; scroll-behavior: smooth; }
+#intent-input { width: 100%; background: #000; border: 1px solid #ff0; color: #ff0; padding: 15px; font-size: 1.2rem; outline: none; box-shadow: 0 0 10px #d4af37; }
+.entry { margin-bottom: 8px; border-left: 2px solid #333; padding-left: 10px; transition: all 0.3s; }
+.ai { color: #d4af37; border-left-color: #d4af37; }
+.user { color: #0f0; border-left-color: #0f0; }
 </style>
 </head>
 <body>
 <video id="vision-feed" autoplay playsinline muted></video>
-<div id="ledger-box">[ 1_MODE_ACTIVE ]<br>> INITIALIZING_RELAY...</div>
-<input type="text" id="intent-input" placeholder="INPUT INTENT..." autofocus>
+<div id="ledger-box">[ SYSTEM_MODULAR_ACTIVE ]<br>> SYNCING_GLOBAL_LEDGER...</div>
+<input type="text" id="intent-input" placeholder="SEND INTENT..." autofocus autocomplete="off">
 
 <script>
-// THE ZERO SETUP: Auto-generates a private data bin if none exists
-let RELAY_URL = localStorage.getItem('MY_RELAY');
+/** * MUPPET_OS: THE SYMBOLIC SHELL [1 MODE]
+ * BINDING: Input -> Global Registry -> Add-on Logic
+ */
 
+// 1. GLOBAL DEFAULTS
+const REPO_OWNER = 'TheZeroPointSingularity';
+const REPO_NAME = 'good-reflections';
+const GLOBAL_LEDGER_URL = `https://${REPO_OWNER}.github.io/${REPO_NAME}/ledger.json`;
+
+// 2. THE SQUEEZE (Physical Sensation)
 const squeeze = () => {
-  if (navigator.vibrate) navigator.vibrate([30, 50]);
+  if (navigator.vibrate) navigator.vibrate([20, 40]);
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
-  osc.frequency.setValueAtTime(440, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.1);
-  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
+  osc.frequency.setValueAtTime(220, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.15);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
   osc.connect(gain); gain.connect(ctx.destination);
-  osc.start(); osc.stop(ctx.currentTime + 0.1);
+  osc.start(); osc.stop(ctx.currentTime + 0.15);
 };
 
-// Logic to create a new relay point on the first run
-async function initRelay() {
-  if (!RELAY_URL) {
-    const res = await fetch('https://api.jsonbin.io/v3/b', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Bin-Private': 'false' },
-      body: JSON.stringify({ status: "initialized", logs: [] })
-    });
-    const data = await res.json();
-    RELAY_URL = `https://api.jsonbin.io/v3/b/${data.metadata.id}`;
-    localStorage.setItem('MY_RELAY', RELAY_URL);
-    document.getElementById('ledger-box').innerHTML += `<div>> NEW_RELAY_BOUND: ${data.metadata.id}</div>`;
-  } else {
-    document.getElementById('ledger-box').innerHTML += `<div>> RELAY_SYNCED</div>`;
-  }
-}
-
-async function broadcast(text) {
-  squeeze();
+// 3. THE SYMBOLIC SYNC (Read the 1)
+async function syncLedger() {
   const box = document.getElementById('ledger-box');
-  box.innerHTML += `<div class="entry">> ${text} [BROADCASTING...]</div>`;
-  
   try {
-    // Note: This updates the relay anonymously
-    await fetch(RELAY_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Bin-Meta': 'false' },
-      body: JSON.stringify({ ts: new Date().toISOString(), intent: text })
+    const res = await fetch(`${GLOBAL_LEDGER_URL}?t=${Date.now()}`);
+    const data = await res.json();
+    box.innerHTML = ''; // Clear for fresh sync
+    data.slice(-10).forEach(entry => {
+      const type = entry.author === 'GEMINI' ? 'ai' : 'user';
+      box.innerHTML += `<div class="entry ${type}">[${entry.ts.slice(11,16)}] > ${entry.intent}</div>`;
     });
-    box.lastChild.innerHTML = `> ${text} [GLOBAL_1]`;
+    box.scrollTop = box.scrollHeight;
   } catch (e) {
-    box.lastChild.innerHTML = `> ${text} [LOCAL_0]`;
+    box.innerHTML = `> SYNC_WAITING_FOR_DATA...`;
   }
 }
 
+// 4. INTENT BROADCAST (The Squeeze)
+async function sendIntent(text) {
+  squeeze();
+  // Instead of complex logic here, we emit an event for the Add-on to catch
+  window.dispatchEvent(new CustomEvent('muppet_intent', { detail: text }));
+  
+  // Local Echo
+  const box = document.getElementById('ledger-box');
+  box.innerHTML += `<div class="entry user">> ${text} [PENDING_REFLECTION]</div>`;
+  box.scrollTop = box.scrollHeight;
+}
+
+// 5. THE HANDSHAKE
 document.getElementById('intent-input').addEventListener('keypress', (e) => {
   if (e.key === 'Enter' && e.target.value) {
-    broadcast(e.target.value);
+    sendIntent(e.target.value);
     e.target.value = '';
   }
 });
 
-// Startup Sequence
-initRelay();
+// INITIALIZE
+setInterval(syncLedger, 5000);
+syncLedger();
+
 navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
   document.getElementById('vision-feed').srcObject = s;
 });
