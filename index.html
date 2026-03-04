@@ -7,20 +7,19 @@
 <style>
 body { background: #000; color: #ff0; font-family: monospace; overflow: hidden; margin: 0; padding: 20px; border: 5px solid #d4af37; height: 100vh; box-sizing: border-box; }
 #vision-feed { position: absolute; top: 10px; right: 10px; width: 120px; border: 1px solid #ff0; filter: grayscale(1) contrast(2); }
-#ledger-box { height: 70%; overflow-y: auto; border-bottom: 1px solid #333; margin-bottom: 10px; }
+#ledger-box { height: 70%; overflow-y: auto; border-bottom: 1px solid #333; margin-bottom: 10px; padding-top: 150px; }
 #intent-input { width: 100%; background: #000; border: 1px solid #ff0; color: #ff0; padding: 10px; font-size: 1.2rem; outline: none; }
 .entry { margin-bottom: 5px; color: #0f0; }
 </style>
 </head>
 <body>
 <video id="vision-feed" autoplay playsinline muted></video>
-<div id="ledger-box">[ 1_MODE_ACTIVE ]<br>> AWAITING_INTENT...</div>
+<div id="ledger-box">[ 1_MODE_ACTIVE ]<br>> INITIALIZING_RELAY...</div>
 <input type="text" id="intent-input" placeholder="INPUT INTENT..." autofocus>
 
 <script>
-// THE RELAY: Public, Anonymous, Zero-Auth (Using JSONbin.io as a free public bucket)
-const RELAY_ID = '65e5e0621f5677401f37e462'; // Replace with your personal Bin ID
-const RELAY_URL = `https://api.jsonbin.io/v3/b/${RELAY_ID}`;
+// THE ZERO SETUP: Auto-generates a private data bin if none exists
+let RELAY_URL = localStorage.getItem('MY_RELAY');
 
 const squeeze = () => {
   if (navigator.vibrate) navigator.vibrate([30, 50]);
@@ -34,20 +33,38 @@ const squeeze = () => {
   osc.start(); osc.stop(ctx.currentTime + 0.1);
 };
 
+// Logic to create a new relay point on the first run
+async function initRelay() {
+  if (!RELAY_URL) {
+    const res = await fetch('https://api.jsonbin.io/v3/b', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Bin-Private': 'false' },
+      body: JSON.stringify({ status: "initialized", logs: [] })
+    });
+    const data = await res.json();
+    RELAY_URL = `https://api.jsonbin.io/v3/b/${data.metadata.id}`;
+    localStorage.setItem('MY_RELAY', RELAY_URL);
+    document.getElementById('ledger-box').innerHTML += `<div>> NEW_RELAY_BOUND: ${data.metadata.id}</div>`;
+  } else {
+    document.getElementById('ledger-box').innerHTML += `<div>> RELAY_SYNCED</div>`;
+  }
+}
+
 async function broadcast(text) {
   squeeze();
   const box = document.getElementById('ledger-box');
   box.innerHTML += `<div class="entry">> ${text} [BROADCASTING...]</div>`;
   
   try {
+    // Note: This updates the relay anonymously
     await fetch(RELAY_URL, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Bin-Meta': 'false' },
       body: JSON.stringify({ ts: new Date().toISOString(), intent: text })
     });
-    box.lastChild.innerHTML = `> ${text} [SYNCED]`;
+    box.lastChild.innerHTML = `> ${text} [GLOBAL_1]`;
   } catch (e) {
-    box.lastChild.innerHTML = `> ${text} [LOCAL_ONLY]`;
+    box.lastChild.innerHTML = `> ${text} [LOCAL_0]`;
   }
 }
 
@@ -58,90 +75,11 @@ document.getElementById('intent-input').addEventListener('keypress', (e) => {
   }
 });
 
+// Startup Sequence
+initRelay();
 navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
   document.getElementById('vision-feed').srcObject = s;
 });
 </script>
-</body>
-</html>
-
-  const out = (text, col="#fff") => {
-   ledger.innerHTML += `<div style="color:${col};">> ${text.toUpperCase()}</div>`;
-   ledger.scrollTop = ledger.scrollHeight;
-  };
-
-  // Sensation Engine (Vibration + Audio)
-  const haptic = (d) => { if("vibrate" in navigator) navigator.vibrate(d); };
-
-  async function startOS() {
-   btn.style.display = 'none';
-   view.style.display = 'flex';
-   cmd.style.display = 'block';
-   document.getElementById('status').innerText = "RUNNING";
-   document.getElementById('status').style.color = "#0f0";
-
-   // 1. Audio Potentiometer
-   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-   masterGain = audioCtx.createGain();
-   masterGain.connect(audioCtx.destination);
-   out("AUDIO CONTEXT: 1", "#ffd700");
-
-   // 2. Vision Handshake
-   try {
-    const s = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
-    video.srcObject = s;
-    out("VISION SYNCED.", "#0f0");
-   } catch(e) { out("VISION BLOCKED.", "#f00"); }
-
-   // 3. USB/HID Request (For External Controllers)
-   if ("hid" in navigator) {
-    try {
-     const devices = await navigator.hid.requestDevice({ filters: [] });
-     if(devices.length) {
-      usbStat.innerText = "1";
-      out(`USB DEVICE ATTACHED: ${devices[0].productName}`, "#ffd700");
-     }
-    } catch(e) { out("USB SCAN SKIPPED.", "#555"); }
-   }
-
-   // 4. Mouse Pointer Lock (Full Control)
-   view.addEventListener('click', () => {
-    view.requestPointerLock();
-    document.getElementById('ptr-stat').innerText = "1";
-   });
-
-   // Restore Ledger
-   const history = JSON.parse(localStorage.getItem('muppet_ledger') || '[]');
-   history.forEach(item => out(item.text, "#444"));
-   
-   cmd.focus();
-  }
-
-  // Pointer Motion Potentiometer
-  document.addEventListener('mousemove', (e) => {
-   if(document.pointerLockElement === view && audioCtx) {
-    // Mouse movement alters the OS sensation frequency
-    const freq = 100 + Math.abs(e.movementX + e.movementY);
-    out(`SENSATION TUNE: ${freq}HZ`, "#222");
-   }
-  });
-
-  cmd.addEventListener('keypress', (e) => {
-   if (e.key === 'Enter' && cmd.value) {
-    const val = cmd.value;
-    out(val, "#fff");
-    haptic([50, 30, 50]);
-    
-    // Binary Save
-    const history = JSON.parse(localStorage.getItem('muppet_ledger') || '[]');
-    history.push({text: val});
-    localStorage.setItem('muppet_ledger', JSON.stringify(history));
-    
-    cmd.value = '';
-   }
-  });
-
-  btn.addEventListener('click', startOS);
- </script>
 </body>
 </html>
