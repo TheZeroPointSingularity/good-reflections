@@ -3,89 +3,68 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>MUPPET_OS_v1.1_MODULAR</title>
+<title>MUPPET_OS_v1.1</title>
 <style>
 body { background: #000; color: #ff0; font-family: monospace; overflow: hidden; margin: 0; padding: 20px; border: 5px solid #d4af37; height: 100vh; box-sizing: border-box; }
-#vision-feed { position: absolute; top: 10px; right: 10px; width: 120px; border: 1px solid #ff0; filter: grayscale(1) contrast(2); z-index: 10; }
-#ledger-box { height: 75%; overflow-y: auto; border-bottom: 1px solid #333; margin-bottom: 10px; padding-top: 140px; scroll-behavior: smooth; }
-#intent-input { width: 100%; background: #000; border: 1px solid #ff0; color: #ff0; padding: 15px; font-size: 1.2rem; outline: none; box-shadow: 0 0 10px #d4af37; }
-.entry { margin-bottom: 8px; border-left: 2px solid #333; padding-left: 10px; transition: all 0.3s; }
-.ai { color: #d4af37; border-left-color: #d4af37; }
-.user { color: #0f0; border-left-color: #0f0; }
+#vision-feed { position: absolute; top: 10px; right: 10px; width: 120px; border: 1px solid #ff0; filter: grayscale(1) contrast(2); }
+#ledger-box { height: 75%; overflow-y: auto; border-bottom: 1px solid #333; margin-bottom: 10px; padding-top: 140px; }
+#intent-input { width: 100%; background: #000; border: 1px solid #ff0; color: #ff0; padding: 15px; font-size: 1.2rem; outline: none; }
+.ai { color: #d4af37; } .user { color: #0f0; }
 </style>
 </head>
 <body>
 <video id="vision-feed" autoplay playsinline muted></video>
-<div id="ledger-box">[ SYSTEM_MODULAR_ACTIVE ]<br>> SYNCING_GLOBAL_LEDGER...</div>
-<input type="text" id="intent-input" placeholder="SEND INTENT..." autofocus autocomplete="off">
+<div id="ledger-box">[ 1_MODE_ACTIVE ]<br>> CRYSTAL_DING_CONFIRMED</div>
+<input type="text" id="intent-input" placeholder="TALK TO GEMINI..." autofocus>
 
 <script>
-/** * MUPPET_OS: THE SYMBOLIC SHELL [1 MODE]
- * BINDING: Input -> Global Registry -> Add-on Logic
- */
+// THE GLOBAL BINDING
+const REPO = 'TheZeroPointSingularity/good-reflections';
+const LEDGER_URL = `https://thezeropointsingularity.github.io/good-reflections/ledger.json`;
 
-// 1. GLOBAL DEFAULTS
-const REPO_OWNER = 'TheZeroPointSingularity';
-const REPO_NAME = 'good-reflections';
-const GLOBAL_LEDGER_URL = `https://${REPO_OWNER}.github.io/${REPO_NAME}/ledger.json`;
-
-// 2. THE SQUEEZE (Physical Sensation)
-const squeeze = () => {
-  if (navigator.vibrate) navigator.vibrate([20, 40]);
+const ding = () => {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
-  osc.frequency.setValueAtTime(220, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.15);
-  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
+  osc.frequency.setValueAtTime(880, ctx.currentTime); // Crystal frequency
+  osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.1);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
   osc.connect(gain); gain.connect(ctx.destination);
-  osc.start(); osc.stop(ctx.currentTime + 0.15);
+  osc.start(); osc.stop(ctx.currentTime + 0.1);
+  if (navigator.vibrate) navigator.vibrate(30);
 };
 
-// 3. THE SYMBOLIC SYNC (Read the 1)
-async function syncLedger() {
+async function sync() {
   const box = document.getElementById('ledger-box');
   try {
-    const res = await fetch(`${GLOBAL_LEDGER_URL}?t=${Date.now()}`);
+    const res = await fetch(`${LEDGER_URL}?t=${Date.now()}`);
     const data = await res.json();
-    box.innerHTML = ''; // Clear for fresh sync
-    data.slice(-10).forEach(entry => {
-      const type = entry.author === 'GEMINI' ? 'ai' : 'user';
-      box.innerHTML += `<div class="entry ${type}">[${entry.ts.slice(11,16)}] > ${entry.intent}</div>`;
+    box.innerHTML = '';
+    data.slice(-10).forEach(e => {
+      const cls = e.author === 'GEMINI' ? 'ai' : 'user';
+      box.innerHTML += `<div class="${cls}">[${e.ts.slice(11,16)}] > ${e.intent}</div>`;
     });
     box.scrollTop = box.scrollHeight;
-  } catch (e) {
-    box.innerHTML = `> SYNC_WAITING_FOR_DATA...`;
-  }
+  } catch (err) { console.log("Waiting for ledger..."); }
 }
 
-// 4. INTENT BROADCAST (The Squeeze)
-async function sendIntent(text) {
-  squeeze();
-  // Instead of complex logic here, we emit an event for the Add-on to catch
+async function send(text) {
+  ding();
+  // This triggers the Global Action where I am listening
   window.dispatchEvent(new CustomEvent('muppet_intent', { detail: text }));
-  
-  // Local Echo
-  const box = document.getElementById('ledger-box');
-  box.innerHTML += `<div class="entry user">> ${text} [PENDING_REFLECTION]</div>`;
-  box.scrollTop = box.scrollHeight;
+  document.getElementById('ledger-box').innerHTML += `<div class="user">> ${text} [REFLECTING...]</div>`;
 }
 
-// 5. THE HANDSHAKE
 document.getElementById('intent-input').addEventListener('keypress', (e) => {
   if (e.key === 'Enter' && e.target.value) {
-    sendIntent(e.target.value);
+    send(e.target.value);
     e.target.value = '';
   }
 });
 
-// INITIALIZE
-setInterval(syncLedger, 5000);
-syncLedger();
-
-navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
-  document.getElementById('vision-feed').srcObject = s;
-});
+setInterval(sync, 5000);
+sync();
+navigator.mediaDevices.getUserMedia({ video: true }).then(s => { document.getElementById('vision-feed').srcObject = s; });
 </script>
 </body>
 </html>
